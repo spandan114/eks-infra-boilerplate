@@ -1,0 +1,6 @@
+clusterName: my-eks-cluster
+serviceAccount:
+  create: false
+  name: aws-load-balancer-controller
+region: ap-south-1
+vpcId: vpc-0256739f910b26d5a

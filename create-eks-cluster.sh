@@ -42,7 +42,7 @@ eksctl create iamserviceaccount \
 echo "Installing Helm..."
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-# Apply CRDs
+# Apply CRDs first
 echo "Applying AWS Load Balancer Controller CRDs..."
 kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
 
@@ -51,8 +51,11 @@ echo "Installing AWS Load Balancer Controller..."
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 
-# Use the specific version that is available
-helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller \
+# Use a more reliable approach for installing the controller
+kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
+
+# Install the controller using a more explicit approach
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   -n kube-system \
   --set clusterName=my-eks-cluster \
   --set serviceAccount.create=false \
@@ -60,6 +63,15 @@ helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set region=ap-south-1 \
   --set vpcId=$VPC_ID \
   --version 1.4.8
+
+# Verify the controller is running
+echo "Verifying the AWS Load Balancer Controller installation..."
+kubectl -n kube-system wait --for=condition=available --timeout=90s deployment/aws-load-balancer-controller
+
+# Wait for webhook to become available
+echo "Waiting for webhook service to be ready..."
+sleep 15
+kubectl -n kube-system get svc aws-load-balancer-webhook-service
 
 echo "Done! EKS cluster is ready for deployments."
 echo "To update your kubeconfig, run:"

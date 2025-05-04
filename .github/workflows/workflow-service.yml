@@ -7,7 +7,7 @@ on:
       - 'app/workflow/**'
       - '.github/workflows/workflow-service.yml'
       - 'k8s/workflow-deployment.yaml'
-      - 'k8s/ingress.yaml'
+      - 'k8s/simple-ingress.yaml'
 
 env:
   AWS_REGION: ap-south-1
@@ -45,7 +45,7 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       working-directory: app/workflow
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build --platform=linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -58,11 +58,13 @@ jobs:
       run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
     
     - name: Deploy to EKS
+      env:
+        IMAGE_TAG: ${{ github.sha }}
       run: |
         export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
         export AWS_REGION=${{ env.AWS_REGION }}
-        envsubst < k8s/workflow-deployment.yaml | kubectl apply -f -
-        kubectl apply -f k8s/ingress.yaml
+        cat k8s/workflow-deployment.yaml | sed "s/ACCOUNT_ID/$AWS_ACCOUNT_ID/g" | sed "s/REGION/$AWS_REGION/g" | sed "s/:latest/:$IMAGE_TAG/g" | kubectl apply -f -
+        kubectl apply -f k8s/simple-ingress.yaml
         
     - name: Verify deployment
       run: |
