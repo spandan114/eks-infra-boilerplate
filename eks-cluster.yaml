@@ -1,0 +1,43 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: my-eks-cluster
+  region: ap-south-1
+  version: "1.28"
+
+vpc:
+  id: <vpc-id>
+  subnets:
+    private:
+      ap-south-1a:
+        id: <subnet-id>
+      ap-south-1b:
+        id: <subnet-id>
+      ap-south-1c:
+        id: <subnet-id>
+
+nodeGroups:
+  - name: ng-1
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 3
+    privateNetworking: true
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        albIngress: true
+        cloudWatch: true
+        autoScaler: true
+
+addons:
+  - name: vpc-cni
+    version: latest
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: aws-load-balancer-controller
+    wellKnownPolicies:
+      awsLoadBalancerController: true
