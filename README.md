@@ -203,4 +203,175 @@ If the ALB is not provisioning correctly:
 
 ### Workflow Service
 - Port: 3001
-- Endpoint: `/api/workflow` 
+- Endpoint: `/api/workflow`
+
+## Quick Start Deployment Guide
+
+Follow these steps in order to deploy the application from scratch:
+
+### 1. Create ECR Repositories and EKS Cluster
+
+```bash
+# Step 1: Create ECR repositories
+aws ecr create-repository --repository-name user-service --region ap-south-1
+aws ecr create-repository --repository-name workflow-service --region ap-south-1
+
+# Step 2: Create EKS cluster
+./create-eks-cluster.sh
+```
+
+### 2. Tag VPC Resources for Load Balancer Controller
+
+```bash
+# Step 3: Tag VPC and subnets for proper ALB controller operation
+./tag-vpc-resources.sh
+```
+
+### 3. Build and Deploy Application
+
+```bash
+# Step 4: Deploy all resources (builds images and deploys to EKS)
+./deploy.sh
+```
+
+### 4. Access the Application
+
+```bash
+# Step 5: Get the ALB endpoint
+kubectl get ingress app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+# Step 6: Access the services
+curl http://<ALB_DNS>/api/user
+curl http://<ALB_DNS>/api/workflow
+```
+
+### 5. Verify Deployment
+
+```bash
+# Step 7: Check pod status
+kubectl get pods
+
+# Step 8: Check logs if needed
+kubectl logs -l app=user-service
+kubectl logs -l app=workflow-service
+```
+
+### 6. Clean Up (When Done)
+
+```bash
+# Step 9: Delete all AWS resources
+./delete-eks-cluster.sh
+```
+
+## Useful EKS Commands Reference
+
+This section provides handy commands for working with EKS and debugging your deployment.
+
+### Connecting to EKS
+
+```bash
+# Configure kubectl to use your EKS cluster
+aws eks update-kubeconfig --name my-eks-cluster --region ap-south-1
+
+# Verify connection
+kubectl config current-context
+```
+
+### Cluster Information
+
+```bash
+# Get cluster info
+kubectl cluster-info
+
+# List all nodes
+kubectl get nodes -o wide
+
+# Check node resource usage
+kubectl top nodes
+
+# View cluster events
+kubectl get events --sort-by=.metadata.creationTimestamp
+```
+
+### Pod Management
+
+```bash
+# List all pods
+kubectl get pods --all-namespaces
+
+# Get pods in a specific namespace
+kubectl get pods -n kube-system
+
+# Get detailed information about a pod
+kubectl describe pod <pod-name>
+
+# Check pod logs
+kubectl logs <pod-name>
+kubectl logs -f <pod-name>  # Follow logs in real-time
+
+# Check logs for a specific container in a pod
+kubectl logs <pod-name> -c <container-name>
+
+# Execute commands in a pod
+kubectl exec -it <pod-name> -- /bin/sh
+```
+
+### Deployment Management
+
+```bash
+# List all deployments
+kubectl get deployments
+
+# Scale a deployment
+kubectl scale deployment <deployment-name> --replicas=3
+
+# Rollout status
+kubectl rollout status deployment/<deployment-name>
+
+# Rollback to previous version
+kubectl rollout undo deployment/<deployment-name>
+
+# Restart a deployment
+kubectl rollout restart deployment/<deployment-name>
+```
+
+### Service & Ingress
+
+```bash
+# List all services
+kubectl get services
+
+# Get all ingresses
+kubectl get ingress
+
+# Describe an ingress
+kubectl describe ingress <ingress-name>
+
+# Port forward to a service (for local testing)
+kubectl port-forward service/<service-name> 8080:80
+```
+
+### AWS Load Balancer Controller Debugging
+
+```bash
+# Check AWS Load Balancer Controller logs
+kubectl logs -n kube-system deployment/aws-load-balancer-controller
+
+# Describe the ingress class
+kubectl describe ingressclass alb
+
+# Check ingress events
+kubectl describe ingress app-ingress
+```
+
+### Cleanup Commands
+
+```bash
+# Delete a specific resource
+kubectl delete deployment <deployment-name>
+kubectl delete service <service-name>
+kubectl delete ingress <ingress-name>
+
+# Delete all resources in a namespace
+kubectl delete all --all -n <namespace>
+```
